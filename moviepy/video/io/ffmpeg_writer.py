@@ -10,7 +10,7 @@ import numpy as np
 from proglog import proglog
 
 from moviepy.config import FFMPEG_BINARY
-
+import streamlit as st
 
 class FFMPEG_VideoWriter:
     """A class for FFMPEG-based video writing.
@@ -227,6 +227,7 @@ def ffmpeg_write_video(
     ffmpeg_params=None,
     logger="bar",
     pix_fmt=None,
+    frames_no=None,
 ):
     """Write the clip to a videofile. See VideoClip.write_videofile for details
     on the parameters.
@@ -253,6 +254,7 @@ def ffmpeg_write_video(
         ffmpeg_params=ffmpeg_params,
         pix_fmt=pix_fmt,
     ) as writer:
+        frame_no = 0
         for t, frame in clip.iter_frames(
             logger=logger, with_times=True, fps=fps, dtype="uint8"
         ):
@@ -263,6 +265,8 @@ def ffmpeg_write_video(
                 frame = np.dstack([frame, mask])
 
             writer.write_frame(frame)
+            frame_no+=1
+            st.session_state.progress = int((frame_no*100)/frames_no)
 
     if write_logfile:
         logfile.close()

@@ -169,6 +169,7 @@ class VideoClip(Clip):
         ffmpeg_params=None,
         logger="bar",
         pix_fmt=None,
+        frames_no=None,
     ):
         """Write the clip to a videofile.
 
@@ -338,6 +339,7 @@ class VideoClip(Clip):
                 bitrate=audio_bitrate,
                 write_logfile=write_logfile,
                 logger=logger,
+                frames_no=frames_no,
             )
 
         ffmpeg_write_video(
