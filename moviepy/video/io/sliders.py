@@ -1,35 +1,33 @@
-"""GUI matplotlib utility to tune the outputs of a function."""
-
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
 
-def sliders(func, sliders_properties, wait_for_validation=False):
-    """A light GUI to manually explore and tune the outputs of a function.
+def sliders(f, sliders_properties, wait_for_validation=False):
+    """A light GUI to manually explore and tune the outputs of
+    a function.
+    slider_properties is a list of dicts (arguments for Slider )
 
-    ``slider_properties`` is a list of dicts (arguments for Slider)::
+    def volume(x,y,z):
+        return x*y*z
 
-        def volume(x,y,z):
-            return x*y*z
-
-        intervals = [ { 'label' :  'width',  'valmin': 1 , 'valmax': 5 },
-                  { 'label' :  'height',  'valmin': 1 , 'valmax': 5 },
-                  { 'label' :  'depth',  'valmin': 1 , 'valmax': 5 } ]
-        inputExplorer(volume, intervals)
-
+    intervals = [ { 'label' :  'width',  'valmin': 1 , 'valmax': 5 },
+              { 'label' :  'height',  'valmin': 1 , 'valmax': 5 },
+              { 'label' :  'depth',  'valmin': 1 , 'valmax': 5 } ]
+    inputExplorer(volume,intervals)
     """
-    n_vars = len(sliders_properties)
-    slider_width = 1.0 / n_vars
+
+    nVars = len(sliders_properties)
+    slider_width = 1.0 / nVars
 
     # CREATE THE CANVAS
 
     figure, ax = plt.subplots(1)
-    figure.canvas.set_window_title("Inputs for '%s'" % (func.func_name))
+    figure.canvas.set_window_title("Inputs for '%s'" % (f.func_name))
 
     # choose an appropriate height
 
     width, height = figure.get_size_inches()
-    height = min(0.5 * n_vars, 8)
+    height = min(0.5 * nVars, 8)
     figure.set_size_inches(width, height, forward=True)
 
     # hide the axis
@@ -52,7 +50,7 @@ def sliders(func, sliders_properties, wait_for_validation=False):
     # CREATE THE CALLBACK FUNCTIONS
 
     def on_changed(event):
-        res = func(*(s.val for s in sliders))
+        res = f(*(s.val for s in sliders))
         if res is not None:
             print(res)
 

@@ -1,12 +1,11 @@
-"""MoviePy audio writing with ffmpeg."""
-
+import os
 import subprocess as sp
+import warnings
 
 import proglog
 
 from moviepy.config import FFMPEG_BINARY
 from moviepy.decorators import requires_duration
-from moviepy.tools import cross_platform_popen_params
 
 
 class FFMPEG_AudioWriter:
@@ -14,7 +13,7 @@ class FFMPEG_AudioWriter:
     A class to write an AudioClip into an audio file.
 
     Parameters
-    ----------
+    ------------
 
     filename
       Name of any video or audio file, like ``video.mp4`` or ``sound.wav`` etc.
@@ -84,14 +83,14 @@ class FFMPEG_AudioWriter:
             cmd.extend(ffmpeg_params)
         cmd.extend([filename])
 
-        popen_params = cross_platform_popen_params(
-            {"stdout": sp.DEVNULL, "stderr": logfile, "stdin": sp.PIPE}
-        )
+        popen_params = {"stdout": sp.DEVNULL, "stderr": logfile, "stdin": sp.PIPE}
+
+        if os.name == "nt":
+            popen_params["creationflags"] = 0x08000000
 
         self.proc = sp.Popen(cmd, **popen_params)
 
     def write_frames(self, frames_array):
-        """TODO: add documentation"""
         try:
             self.proc.stdin.write(frames_array.tobytes())
         except IOError as err:
@@ -130,7 +129,7 @@ class FFMPEG_AudioWriter:
 
             elif "bitrate not specified" in ffmpeg_error:
                 error += (
-                    "\n\nThe audio export failed, possibly because the "
+                    "\n\nThe audio export failed, possily because the "
                     "bitrate you specified was too high or too low for "
                     "the audio codec."
                 )
@@ -144,7 +143,6 @@ class FFMPEG_AudioWriter:
             raise IOError(error)
 
     def close(self):
-        """Closes the writer, terminating the subprocess if is still alive."""
         if hasattr(self, "proc") and self.proc:
             self.proc.stdin.close()
             self.proc.stdin = None
@@ -185,6 +183,7 @@ def ffmpeg_audiowrite(
     A function that wraps the FFMPEG_AudioWriter to write an AudioClip
     to a file.
     """
+
     if write_logfile:
         logfile = open(filename + ".log", "w+")
     else:

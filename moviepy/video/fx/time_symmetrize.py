@@ -1,6 +1,7 @@
-from moviepy.decorators import apply_to_mask, requires_duration
+from moviepy.decorators import apply_to_audio, apply_to_mask, requires_duration
 from moviepy.video.compositing.concatenate import concatenate_videoclips
-from moviepy.video.fx.time_mirror import time_mirror
+
+from .time_mirror import time_mirror
 
 
 @requires_duration

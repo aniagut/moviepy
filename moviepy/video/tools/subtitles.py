@@ -1,11 +1,11 @@
-"""Experimental module for subtitles support."""
+""" Experimental module for subtitles support. """
 
 import re
 
 import numpy as np
 
 from moviepy.decorators import convert_path_to_string
-from moviepy.tools import convert_to_seconds
+from moviepy.tools import cvsecs
 from moviepy.video.VideoClip import TextClip, VideoClip
 
 
@@ -17,23 +17,21 @@ class SubtitlesClip(VideoClip):
     needed.
 
     Parameters
-    ----------
+    ==========
 
     subtitles
       Either the name of a file as a string or path-like object, or a list
 
     encoding
       Optional, specifies srt file encoding.
-      Any standard Python encoding is allowed (listed at
-      https://docs.python.org/3.8/library/codecs.html#standard-encodings)
+      Any standard Python encoding is allowed (listed at https://docs.python.org/3.8/library/codecs.html#standard-encodings)
 
     Examples
-    --------
+    =========
 
     >>> from moviepy.video.tools.subtitles import SubtitlesClip
     >>> from moviepy.video.io.VideoFileClip import VideoFileClip
-    >>> generator = lambda text: TextClip(text, font='Georgia-Regular',
-    ...                                   font_size=24, color='white')
+    >>> generator = lambda txt: TextClip(txt, font='Georgia-Regular', fontsize=24, color='white')
     >>> sub = SubtitlesClip("subtitles.srt", generator)
     >>> sub = SubtitlesClip("subtitles.srt", generator, encoding='utf-8')
     >>> myvideo = VideoFileClip("myvideo.avi")
@@ -50,8 +48,7 @@ class SubtitlesClip(VideoClip):
             # `subtitles` is a string or path-like object
             subtitles = file_to_subtitles(subtitles, encoding=encoding)
 
-        # subtitles = [(map(convert_to_seconds, times), text)
-        #              for times, text in subtitles]
+        # subtitles = [(map(cvsecs, tt),txt) for tt, txt in subtitles]
         self.subtitles = subtitles
         self.textclips = dict()
 
@@ -61,7 +58,7 @@ class SubtitlesClip(VideoClip):
                 return TextClip(
                     txt,
                     font="Georgia-Bold",
-                    font_size=24,
+                    fontsize=24,
                     color="white",
                     stroke_color="black",
                     stroke_width=0.5,
@@ -75,18 +72,17 @@ class SubtitlesClip(VideoClip):
         def add_textclip_if_none(t):
             """Will generate a textclip if it hasn't been generated asked
             to generate it yet. If there is no subtitle to show at t, return
-            false.
-            """
+            false."""
             sub = [
-                ((text_start, text_end), text)
-                for ((text_start, text_end), text) in self.textclips.keys()
-                if (text_start <= t < text_end)
+                ((ta, tb), txt)
+                for ((ta, tb), txt) in self.textclips.keys()
+                if (ta <= t < tb)
             ]
             if not sub:
                 sub = [
-                    ((text_start, text_end), text)
-                    for ((text_start, text_end), text) in self.subtitles
-                    if (text_start <= t < text_end)
+                    ((ta, tb), txt)
+                    for ((ta, tb), txt) in self.subtitles
+                    if (ta <= t < tb)
                 ]
                 if not sub:
                     return False
@@ -106,25 +102,24 @@ class SubtitlesClip(VideoClip):
 
         self.make_frame = make_frame
         hasmask = bool(self.make_textclip("T").mask)
-        self.mask = VideoClip(make_mask_frame, is_mask=True) if hasmask else None
+        self.mask = VideoClip(make_mask_frame, ismask=True) if hasmask else None
 
-    def in_subclip(self, start_time=None, end_time=None):
-        """Returns a sequence of [(t1,t2), text] covering all the given subclip
-        from start_time to end_time. The first and last times will be cropped so as
-        to be exactly start_time and end_time if possible.
-        """
+    def in_subclip(self, t_start=None, t_end=None):
+        """Returns a sequence of [(t1,t2), txt] covering all the given subclip
+        from t_start to t_end. The first and last times will be cropped so as
+        to be exactly t_start and t_end if possible."""
 
         def is_in_subclip(t1, t2):
             try:
-                return (start_time <= t1 < end_time) or (start_time < t2 <= end_time)
+                return (t_start <= t1 < t_end) or (t_start < t2 <= t_end)
             except Exception:
                 return False
 
         def try_cropping(t1, t2):
             try:
-                return max(t1, start_time), min(t2, end_time)
+                return (max(t1, t_start), min(t2, t_end))
             except Exception:
-                return t1, t2
+                return (t1, t2)
 
         return [
             (try_cropping(t1, t2), txt)
@@ -140,42 +135,42 @@ class SubtitlesClip(VideoClip):
 
     def __str__(self):
         def to_srt(sub_element):
-            (start_time, end_time), text = sub_element
-            formatted_start_time = convert_to_seconds(start_time)
-            formatted_end_time = convert_to_seconds(end_time)
-            return "%s - %s\n%s" % (formatted_start_time, formatted_end_time, text)
+            (ta, tb), txt = sub_element
+            fta = cvsecs(ta)
+            ftb = cvsecs(tb)
+            return "%s - %s\n%s" % (fta, ftb, txt)
 
-        return "\n\n".join(to_srt(sub) for sub in self.subtitles)
+        return "\n\n".join(to_srt(s) for s in self.subtitles)
 
     def match_expr(self, expr):
-        """Matches a regular expression against the subtitles of the clip."""
+
         return SubtitlesClip(
-            [sub for sub in self.subtitles if re.findall(expr, sub[1]) != []]
+            [e for e in self.subtitles if re.findall(expr, e[1]) != []]
         )
 
     def write_srt(self, filename):
-        """Writes an ``.srt`` file with the content of the clip."""
-        with open(filename, "w+") as file:
-            file.write(str(self))
+        with open(filename, "w+") as f:
+            f.write(str(self))
 
 
 @convert_path_to_string("filename")
 def file_to_subtitles(filename, encoding=None):
     """Converts a srt file into subtitles.
 
-    The returned list is of the form ``[((start_time,end_time),'some text'),...]``
+    The returned list is of the form ``[((ta,tb),'some text'),...]``
     and can be fed to SubtitlesClip.
 
     Only works for '.srt' format for the moment.
     """
+
     times_texts = []
     current_times = None
     current_text = ""
-    with open(filename, "r", encoding=encoding) as file:
-        for line in file:
+    with open(filename, "r", encoding=encoding) as f:
+        for line in f:
             times = re.findall("([0-9]*:[0-9]*:[0-9]*,[0-9]*)", line)
             if times:
-                current_times = [convert_to_seconds(t) for t in times]
+                current_times = [cvsecs(t) for t in times]
             elif line.strip() == "":
                 times_texts.append((current_times, current_text.strip("\n")))
                 current_times, current_text = None, ""

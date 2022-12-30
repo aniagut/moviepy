@@ -1,5 +1,7 @@
-"""Contains different functions to make end and opening credits, even though it is
-difficult to fill everyone needs in this matter.
+"""
+This module contains different functions to make end and opening
+credits, even though it is difficult to fill everyone needs in this
+matter.
 """
 from moviepy.decorators import convert_path_to_string
 from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
@@ -7,11 +9,22 @@ from moviepy.video.fx.resize import resize
 from moviepy.video.VideoClip import ImageClip, TextClip
 
 
-class CreditsClip(TextClip):
-    """Credits clip.
+@convert_path_to_string("creditfile")
+def credits1(
+    creditfile,
+    width,
+    stretch=30,
+    color="white",
+    stroke_color="black",
+    stroke_width=2,
+    font="Impact-Normal",
+    fontsize=60,
+    gap=0,
+):
+    """
 
     Parameters
-    ----------
+    -----------
 
     creditfile
       A string or path like object pointing to a text file
@@ -31,7 +44,6 @@ class CreditsClip(TextClip):
         ..Music Supervisor
         JEAN DIDIER
 
-
     width
       Total width of the credits text in pixels
 
@@ -46,7 +58,7 @@ class CreditsClip(TextClip):
       Name of the font to use. See ``TextClip.list('font')`` for
       the list of fonts you can use on your computer.
 
-    font_size
+    fontsize
       Size of font to use
 
     stroke_color
@@ -56,15 +68,13 @@ class CreditsClip(TextClip):
     stroke_width
       Width of the stroke, in pixels. Can be a float, like 1.5.
 
-    bg_color
-      Color of the background. If ``None``, the background will be transparent.
 
     Returns
-    -------
+    ---------
 
     image
       An ImageClip instance that looks like this and can be scrolled
-      to make some credits: ::
+      to make some credits:
 
           Executive Story Editor    MARCEL DURAND
              Associate Producers    MARTIN MARCEL
@@ -73,69 +83,57 @@ class CreditsClip(TextClip):
 
     """
 
-    @convert_path_to_string("creditfile")
-    def __init__(
-        self,
-        creditfile,
-        width,
-        stretch=30,
-        color="white",
-        stroke_color="black",
-        stroke_width=2,
-        font="Impact-Normal",
-        font_size=60,
-        bg_color=None,
-        gap=0,
-    ):
-        # Parse the .txt file
-        texts = []
-        one_line = True
+    # PARSE THE TXT FILE
+    texts = []
+    oneline = True
 
-        with open(creditfile) as file:
-            for line in file:
-                if line.startswith(("\n", "#")):
-                    # exclude blank lines or comments
-                    continue
-                elif line.startswith(".blank"):
-                    # ..blank n
-                    for i in range(int(line.split(" ")[1])):
-                        texts.append(["\n", "\n"])
-                elif line.startswith(".."):
-                    texts.append([line[2:], ""])
-                    one_line = True
-                elif one_line:
-                    texts.append(["", line])
-                    one_line = False
-                else:
-                    texts.append(["\n", line])
+    with open(creditfile) as f:
+        for l in f:
+            if l.startswith(("\n", "#")):
+                # exclude blank lines or comments
+                continue
+            elif l.startswith(".blank"):
+                # ..blank n
+                for i in range(int(l.split(" ")[1])):
+                    texts.append(["\n", "\n"])
+            elif l.startswith(".."):
+                texts.append([l[2:], ""])
+                oneline = True
+            elif oneline:
+                texts.append(["", l])
+                oneline = False
+            else:
+                texts.append(["\n", l])
 
-        left, right = ("".join(line) for line in zip(*texts))
+    left, right = ("".join(l) for l in zip(*texts))
 
-        # Make two columns for the credits
-        left, right = [
-            TextClip(
-                txt,
-                color=color,
-                stroke_color=stroke_color,
-                stroke_width=stroke_width,
-                font=font,
-                font_size=font_size,
-                align=align,
-            )
-            for txt, align in [(left, "East"), (right, "West")]
-        ]
-
-        both_columns = CompositeVideoClip(
-            [left, right.with_position((left.w + gap, 0))],
-            size=(left.w + right.w + gap, right.h),
-            bg_color=bg_color,
+    # MAKE TWO COLUMNS FOR THE CREDITS
+    left, right = [
+        TextClip(
+            txt,
+            color=color,
+            stroke_color=stroke_color,
+            stroke_width=stroke_width,
+            font=font,
+            fontsize=fontsize,
+            align=al,
         )
+        for txt, al in [(left, "East"), (right, "West")]
+    ]
 
-        # Scale to the required size
-        scaled = resize(both_columns, width=width)
+    cc = CompositeVideoClip(
+        [left, right.set_position((left.w + gap, 0))],
+        size=(left.w + right.w + gap, right.h),
+        bg_color=None,
+    )
 
-        # Transform the CompositeVideoClip into an ImageClip
+    # SCALE TO THE REQUIRED SIZE
 
-        # Calls ImageClip.__init__()
-        super(TextClip, self).__init__(scaled.get_frame(0))
-        self.mask = ImageClip(scaled.mask.get_frame(0), is_mask=True)
+    scaled = resize(cc, width=width)
+
+    # TRANSFORM THE WHOLE CREDIT CLIP INTO AN ImageCLip
+
+    imclip = ImageClip(scaled.get_frame(0))
+    amask = ImageClip(scaled.mask.get_frame(0), ismask=True)
+
+    return imclip.set_mask(amask)

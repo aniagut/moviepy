@@ -1,7 +1,7 @@
 Moviepy Docker
 ===============
 
-Prerequisites
+Prequisites
 -------------
 
 1. Docker installed `Docker for Mac, Docker for windows, linux, etc <https://www.docker.com/get-docker/>`_

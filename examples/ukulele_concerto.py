@@ -1,5 +1,4 @@
-from moviepy import *
-
+from moviepy.editor import *
 
 # UKULELE CLIP, OBTAINED BY CUTTING AND CROPPING
 # RAW FOOTAGE
@@ -28,7 +27,7 @@ piano = (
 # A CLIP WITH A TEXT AND A BLACK SEMI-OPAQUE BACKGROUND
 
 txt = TextClip(
-    "V. Zulkoninov - Ukulele Sonata", font="Amiri-regular", color="white", font_size=24
+    "V. Zulkoninov - Ukulele Sonata", font="Amiri-regular", color="white", fontsize=24
 )
 
 txt_col = txt.on_color(

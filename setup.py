@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-"""MoviePy setup script."""
 
-import os
+# This will try to import setuptools. If not here, it will reach for the embedded
+# ez_setup (or the ez_setup package). If none, it fails with a message
 import sys
 from codecs import open
-
 
 try:
     from setuptools import find_packages, setup
@@ -16,10 +15,9 @@ except ImportError:
         ez_setup.use_setuptools()
     except ImportError:
         raise ImportError(
-            "MoviePy could not be installed, probably because "
-            "neither setuptools nor ez_setup are installed on this computer.\n"
-            "Install setuptools with $ (sudo) pip install setuptools and "
-            "try again."
+            "MoviePy could not be installed, probably because"
+            " neither setuptools nor ez_setup are installed on this computer."
+            "\nInstall setuptools ([sudo] pip install setuptools) and try again."
         )
 
 
@@ -45,8 +43,8 @@ class PyTest(TestCommand):
             import pytest
         except ImportError:
             raise ImportError(
-                "Running tests requires additional dependencies.\n"
-                "Please run $ pip install moviepy[test]"
+                "Running tests requires additional dependencies."
+                "\nPlease run (pip install moviepy[test])"
             )
 
         errno = pytest.main(self.pytest_args.split(" "))
@@ -60,70 +58,52 @@ if "build_docs" in sys.argv:
         from sphinx.setup_command import BuildDoc
     except ImportError:
         raise ImportError(
-            "Running the documentation builds has additional dependencies.\n"
-            "Please run $ pip install moviepy[doc]"
+            "Running the documenation builds has additional dependencies. Please run (pip install moviepy[doc])"
         )
 
     cmdclass["build_docs"] = BuildDoc
 
-__version__ = None
-with open(os.path.join("moviepy", "version.py"), "r", "utf-8") as f:
-    __version__ = f.read().split(" ")[2].strip("\n").strip('"')
-
+__version__ = None  # Explicitly set version to quieten static code checkers.
+exec(open("moviepy/version.py").read())  # loads __version__
 
 # Define the requirements for specific execution needs.
 requires = [
-    "decorator>=4.0.2,<6.0",
+    "decorator>=4.0.2,<5.0",
     "imageio>=2.5,<3.0",
     "imageio_ffmpeg>=0.2.0",
     "numpy>=1.17.3",
+    "requests>=2.8.1,<3.0",
     "proglog<=1.0.0",
 ]
 
 optional_reqs = [
-    "pygame>=1.9.3",
-    "python-dotenv>=0.10",
-    "opencv-python",
-    "scikit-image",
+    "python-dotenv>=0.10.0",
+    "opencv-python>=3.0,<4.0",
+    "scikit-image>=0.13.0,<1.0",
     "scikit-learn",
-    "scipy",
-    "matplotlib",
+    "scipy>=0.19.0,<1.5",
+    "matplotlib>=2.0.0,<3.0",
     "youtube_dl",
 ]
 
 doc_reqs = [
+    "pygame>=1.9.3,<2.0; python_version<'3.8'",
     "numpydoc<2.0",
-    "Sphinx==3.4.3",
-    "sphinx-rtd-theme==0.5.1",
 ]
 
 test_reqs = [
-    "coveralls>=3.0,<4.0",
+    "coverage<5.0",
+    "coveralls>=1.1,<2.0",
     "pytest-cov>=2.5.1,<3.0",
-    "pytest>=3.0.0,<7.0.0",
+    "pytest>=3.0.0,<4.0",
+    "requests>=2.8.1,<3.0",
 ]
 
-lint_reqs = [
-    "black>=22.3.0",
-    "flake8>=4.0.1",
-    "flake8-absolute-import>=1.0",
-    "flake8-docstrings>=1.6.0",
-    "flake8-rst-docstrings>=0.2.5",
-    "flake8-implicit-str-concat==0.3.0",
-    "isort>=5.10.1",
-    "pre-commit>=2.19.0",
-]
-
-extra_reqs = {
-    "optional": optional_reqs,
-    "doc": doc_reqs,
-    "test": test_reqs,
-    "lint": lint_reqs,
-}
+extra_reqs = {"optional": optional_reqs, "doc": doc_reqs, "test": test_reqs}
 
 # Load the README.
-with open("README.rst", "r", "utf-8") as file:
-    readme = file.read()
+with open("README.rst", "r", "utf-8") as f:
+    readme = f.read()
 
 setup(
     name="moviepy",
@@ -143,7 +123,6 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Topic :: Multimedia",
         "Topic :: Multimedia :: Sound/Audio",
         "Topic :: Multimedia :: Sound/Audio :: Analysis",

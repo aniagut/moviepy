@@ -1,12 +1,10 @@
-"""MoviePy audio reading with ffmpeg."""
-
+import os
 import subprocess as sp
 import warnings
 
 import numpy as np
 
 from moviepy.config import FFMPEG_BINARY
-from moviepy.tools import cross_platform_popen_params
 from moviepy.video.io.ffmpeg_reader import ffmpeg_parse_infos
 
 
@@ -17,7 +15,7 @@ class FFMPEG_AudioReader:
     raw data.
 
     Parameters
-    ----------
+    ------------
 
     filename
       Name of any video or audio file, like ``video.mp4`` or
@@ -56,31 +54,36 @@ class FFMPEG_AudioReader:
         self.filename = filename
         self.nbytes = nbytes
         self.fps = fps
-        self.format = "s%dle" % (8 * nbytes)
-        self.codec = "pcm_s%dle" % (8 * nbytes)
+        self.f = "s%dle" % (8 * nbytes)
+        self.acodec = "pcm_s%dle" % (8 * nbytes)
         self.nchannels = nchannels
         infos = ffmpeg_parse_infos(filename, decode_file=decode_file)
         self.duration = infos["duration"]
+        if "video_duration" in infos:
+            self.duration = infos["video_duration"]
+        else:
+            self.duration = infos["duration"]
         self.bitrate = infos["audio_bitrate"]
         self.infos = infos
         self.proc = None
 
-        self.n_frames = int(self.fps * self.duration)
-        self.buffersize = min(self.n_frames + 1, buffersize)
+        self.nframes = int(self.fps * self.duration)
+        self.buffersize = min(self.nframes + 1, buffersize)
         self.buffer = None
         self.buffer_startframe = 1
         self.initialize()
         self.buffer_around(1)
 
-    def initialize(self, start_time=0):
-        """Opens the file, creates the pipe."""
+    def initialize(self, starttime=0):
+        """ Opens the file, creates the pipe. """
+
         self.close()  # if any
 
-        if start_time != 0:
-            offset = min(1, start_time)
+        if starttime != 0:
+            offset = min(1, starttime)
             i_arg = [
                 "-ss",
-                "%.05f" % (start_time - offset),
+                "%.05f" % (starttime - offset),
                 "-i",
                 self.filename,
                 "-vn",
@@ -97,9 +100,9 @@ class FFMPEG_AudioReader:
                 "-loglevel",
                 "error",
                 "-f",
-                self.format,
+                self.f,
                 "-acodec",
-                self.codec,
+                self.acodec,
                 "-ar",
                 "%d" % self.fps,
                 "-ac",
@@ -108,35 +111,35 @@ class FFMPEG_AudioReader:
             ]
         )
 
-        popen_params = cross_platform_popen_params(
-            {
-                "bufsize": self.buffersize,
-                "stdout": sp.PIPE,
-                "stderr": sp.PIPE,
-                "stdin": sp.DEVNULL,
-            }
-        )
+        popen_params = {
+            "bufsize": self.buffersize,
+            "stdout": sp.PIPE,
+            "stderr": sp.PIPE,
+            "stdin": sp.DEVNULL,
+        }
+
+        if os.name == "nt":
+            popen_params["creationflags"] = 0x08000000
 
         self.proc = sp.Popen(cmd, **popen_params)
 
-        self.pos = np.round(self.fps * start_time)
+        self.pos = np.round(self.fps * starttime)
 
     def skip_chunk(self, chunksize):
-        """TODO: add documentation"""
-        _ = self.proc.stdout.read(self.nchannels * chunksize * self.nbytes)
+        s = self.proc.stdout.read(self.nchannels * chunksize * self.nbytes)
         self.proc.stdout.flush()
         self.pos = self.pos + chunksize
 
     def read_chunk(self, chunksize):
-        """TODO: add documentation"""
         # chunksize is not being autoconverted from float to int
         chunksize = int(round(chunksize))
-        s = self.proc.stdout.read(self.nchannels * chunksize * self.nbytes)
-        data_type = {1: "int8", 2: "int16", 4: "int32"}[self.nbytes]
+        L = self.nchannels * chunksize * self.nbytes
+        s = self.proc.stdout.read(L)
+        dt = {1: "int8", 2: "int16", 4: "int32"}[self.nbytes]
         if hasattr(np, "frombuffer"):
-            result = np.frombuffer(s, dtype=data_type)
+            result = np.frombuffer(s, dtype=dt)
         else:
-            result = np.fromstring(s, dtype=data_type)
+            result = np.fromstring(s, dtype=dt)
         result = (1.0 * result / 2 ** (8 * self.nbytes - 1)).reshape(
             (int(len(result) / self.nchannels), self.nchannels)
         )
@@ -167,7 +170,6 @@ class FFMPEG_AudioReader:
         self.pos = pos
 
     def get_frame(self, tt):
-        """TODO: add documentation"""
         if isinstance(tt, np.ndarray):
             # lazy implementation, but should not cause problems in
             # 99.99 %  of the cases
@@ -218,7 +220,7 @@ class FFMPEG_AudioReader:
         else:
 
             ind = int(self.fps * tt)
-            if ind < 0 or ind > self.n_frames:  # out of time: return 0
+            if ind < 0 or ind > self.nframes:  # out of time: return 0
                 return np.zeros(self.nchannels)
 
             if not (0 <= (ind - self.buffer_startframe) < len(self.buffer)):
@@ -228,13 +230,14 @@ class FFMPEG_AudioReader:
             # read the frame in the buffer
             return self.buffer[ind - self.buffer_startframe]
 
-    def buffer_around(self, frame_number):
+    def buffer_around(self, framenumber):
         """
-        Fills the buffer with frames, centered on ``frame_number``
+        Fills the buffer with frames, centered on ``framenumber``
         if possible
         """
+
         # start-frame for the buffer
-        new_bufferstart = max(0, frame_number - self.buffersize // 2)
+        new_bufferstart = max(0, framenumber - self.buffersize // 2)
 
         if self.buffer is not None:
             current_f_end = self.buffer_startframe + self.buffersize
@@ -254,13 +257,11 @@ class FFMPEG_AudioReader:
         self.buffer_startframe = new_bufferstart
 
     def close(self):
-        """Closes the reader, terminating the subprocess if is still alive."""
         if self.proc:
-            if self.proc.poll() is None:
-                self.proc.terminate()
-                self.proc.stdout.close()
-                self.proc.stderr.close()
-                self.proc.wait()
+            self.proc.terminate()
+            self.proc.stdout.close()
+            self.proc.stderr.close()
+            self.proc.wait()
             self.proc = None
 
     def __del__(self):
