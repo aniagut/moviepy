@@ -266,7 +266,8 @@ def ffmpeg_write_video(
 
             writer.write_frame(frame)
             frame_no+=1
-            st.session_state.progress = int((frame_no*100)/frames_no)
+            if frames_no is not None:
+                st.session_state.progress = int((frame_no*100)/frames_no)
 
     if write_logfile:
         logfile.close()
