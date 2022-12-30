@@ -339,7 +339,6 @@ class VideoClip(Clip):
                 bitrate=audio_bitrate,
                 write_logfile=write_logfile,
                 logger=logger,
-                frames_no=frames_no,
             )
 
         ffmpeg_write_video(
@@ -355,6 +354,7 @@ class VideoClip(Clip):
             ffmpeg_params=ffmpeg_params,
             logger=logger,
             pix_fmt=pix_fmt,
+            frames_no=frames_no,
         )
 
         if remove_temp and make_audio:
